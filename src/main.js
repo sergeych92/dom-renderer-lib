@@ -1,4 +1,5 @@
 import '../css/style.scss';
+
 import { parseComponent } from './updatable-component/parse-component';
 import { activateComponent } from './updatable-component/activate-component';
 
@@ -28,7 +29,7 @@ const data = {
 //     </ul>
 // </div>`, data);
 
-let {expressions, root} = parseComponent(`
+let {parsers, root} = parseComponent(`
     <div attr1="{{hi"
         attr2="you}}"
         class="brown {{'color' + optionalColor}} green {{'_' + mainColor + '_'}}"
@@ -40,4 +41,5 @@ let {expressions, root} = parseComponent(`
             <input type="{{type}}">
             <span id="my-id">
     </div>`);
-const component = activateComponent(expressions, root);
+const component = activateComponent(parsers, root);
+component.update(data);

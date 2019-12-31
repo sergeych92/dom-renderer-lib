@@ -3,7 +3,7 @@ export const MATCHERS = {
     OPENING_TAG: /<[^<>="\s/']+(?:\s+[^<>="\s/']+(?:="[^"]*?")?)*?\s*\/?>/g,
 
     // title="value1 {{value2 + 'smt'}} value3"
-    ATTR_AND_VALUE: /([^="<>/\s]+)=(?=("[^"]*{{[^"]*}}[^"]*"))\2/g,
+    ATTR_AND_CURLIE_VALUE: /([^="<>/\s]+)=(?=("[^"]*{{[^"]*}}[^"]*"))\2/g,
 
     // <div>Ololo</div {{x + 1}}>
     CLOSING_TAG: /<\/[^<>="\s/']+>/g,
@@ -12,10 +12,26 @@ export const MATCHERS = {
     TAG_CURLIES_INNER: /{{(.*?)}}/g
 };
 
-export const EXPRESSION_TYPES = {
-    MULTI: 'MULTI',
-    ATTR: 'ATTR',
-    TAG: 'TAG'
-};
 
 export const ID_MARKER = 'data-refid';
+
+export const EMPTY_CURLIES = '{{}}';
+
+export const DYNAMIC_VAR_NAME = '__js_renderer_data__';
+
+export const PROHIBITED_VARIABLE_NAMES = [
+    'function',
+    'while',
+    'do',
+    'if',
+    'else',
+    'let',
+    'const',
+    'var',
+    'of',
+    'for',
+    'return',
+    'break',
+    'switch',
+    DYNAMIC_VAR_NAME
+];

@@ -1,5 +1,8 @@
 import { toDom } from "./utils";
-import { MATCHERS, EXPRESSION_TYPES, ID_MARKER } from "./constants";
+import { MATCHERS, ID_MARKER } from "./constants";
+import { AttributeCurlieParser } from "./attribute-curlie-parser";
+import { TagParser } from "./tag-parser";
+import { StandaloneParser } from "./standalone-parser";
 
 /* {{ }} is allowed in two places:
  * inside attributes <div title="Hello {{ponyName}}">
@@ -8,7 +11,7 @@ import { MATCHERS, EXPRESSION_TYPES, ID_MARKER } from "./constants";
 
 export function parseComponent(template) {
     let lastId = 1;
-    const expressions = [];
+    const parsers = [];
 
     // Go though each opening tag (<div id="my-id" name="main">, <input type="text" />)
     const deOpeningTags = template.replace(MATCHERS.OPENING_TAG, openingTag => {
@@ -16,23 +19,25 @@ export function parseComponent(template) {
             // TODO: validate: no data-refid="" attributes
             // go through attributes and transform all curlies
             const tagExprs = [];
-            const deAttributed = openingTag.replace(MATCHERS.ATTR_AND_VALUE, (_, name, value) => {
+            let tagId = null;
+            const deAttributed = openingTag.replace(MATCHERS.ATTR_AND_CURLIE_VALUE, (_, name, value) => {
                 tagExprs.push({
-                    type: EXPRESSION_TYPES.ATTR,
                     name,
-                    value, // contains "value1 {{value2 + 'smt'}} value3"
-                    id: lastId
+                    value // contains "value1 {{value2 + 'smt'}} value3"
                 });
-                return ` ${ID_MARKER}="${lastId++}" `;
+                tagId = lastId++;
+                return tagExprs.length === 1 ? ` ${ID_MARKER}="${tagId}" ` : '';
             });
             if (tagExprs.length) {
                 if (tagExprs.length === 1) {
-                    expressions.push(tagExprs[0]);
+                    parsers.push(new AttributeCurlieParser({
+                        ...tagExprs[0], id: tagId
+                    }));
                 } else {
-                    expressions.push({
-                        type: EXPRESSION_TYPES.MULTI,
-                        expressions: tagExprs
-                    });
+                    parsers.push(new TagParser({
+                        id: tagId,
+                        attributes: tagExprs.map(e => new AttributeCurlieParser(e))
+                    }));
                 }
             }
             return deAttributed;
@@ -56,16 +61,15 @@ export function parseComponent(template) {
 
     // Process: <div>title="yes {{hi}}"</div> -- not an attribute
     const deInnerTags = deClosingTags.replace(MATCHERS.TAG_CURLIES_INNER, (_, expression) => {
-        expressions.push({
-            type: EXPRESSION_TYPES.TAG,
-            expression,
-            id: lastId
-        });
+        parsers.push(new StandaloneParser({
+            id: lastId,
+            expression
+        }));
         return `<span ${ID_MARKER}="${lastId++}"></span>`;
     });
 
     return {
-        expressions,
+        parsers,
         root: toDom(deInnerTags)
     };
 }
