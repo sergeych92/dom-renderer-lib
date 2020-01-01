@@ -12,3 +12,8 @@ export function escapeHtml() {
     pre.appendChild(text);
     return pre.innerHTML;
 }
+
+// a = Set(1,2,3); b = Set(2,3,4); a - b == [1]
+export function setDiff(a, b) {
+    return [...a].filter(v => !b.has(v));
+}

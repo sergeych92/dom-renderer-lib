@@ -35,3 +35,7 @@ export const PROHIBITED_VARIABLE_NAMES = [
     'switch',
     DYNAMIC_VAR_NAME
 ];
+
+export const JS_15_NAME_RULE = '[a-zA-Z_$][\w$]*';
+
+export const JS_VARNAME_MATCHER = new RegExp(String.raw`^\s*${JS_15_NAME_RULE}\s*$`);
