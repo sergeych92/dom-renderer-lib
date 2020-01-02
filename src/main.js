@@ -1,19 +1,18 @@
 import '../css/style.scss';
 
-import { parseComponent } from './updatable-component/parse-component';
-import { activateComponent } from './updatable-component/activate-component';
+import { createUpdatableComponent } from './updatable-component/utils';
 
-const data = {
-    optionalColor: 'white',
-    mainColor: 'blue',
-    world: 'World',
-    spanner: true,
-    words: ['I', 'Love', 'JavaScript'],
-    onWordClick: e => {
-        e.preventDefault();
-        console.log('clicked');
-    }
-}
+// const data = {
+//     optionalColor: 'white',
+//     mainColor: 'blue',
+//     world: 'World',
+//     spanner: true,
+//     words: ['I', 'Love', 'JavaScript'],
+//     onWordClick: e => {
+//         e.preventDefault();
+//         console.log('clicked');
+//     }
+// }
 
 // let htmlStr = toUpdatableComponent(`
 // <div class="brown {{optionalColor}} green {{mainColor}}" name="main *if=&quot;hi&quot;">
@@ -29,17 +28,35 @@ const data = {
 //     </ul>
 // </div>`, data);
 
-let {parsers, root} = parseComponent(`
-    <div attr1="{{hi"
-        attr2="you}}"
-        class="brown {{'color' + optionalColor}} green {{'_' + mainColor + '_'}}"
-        name="main *if=&quot;hi&quot;"
-        id="what is this">
-            <div title="title <span id='not your typical attr'></span> string">
-                Hello {{x + 1}} World
-            </div>
-            <input type="{{type}}">
-            <span id="my-id">
-    </div>`);
-const component = activateComponent(parsers, root);
+
+// let {parsers, root} = parseComponent(`
+//     <div attr1="{{hi"
+//         attr2="you}}"
+//         class="brown {{'color' + optionalColor}} green {{'_' + mainColor + '_'}}"
+//         name="main *if=&quot;hi&quot;"
+//         id="what is this">
+//             <div title="title <span id='not your typical attr'></span> string">
+//                 Hello {{x + 1}} World
+//             </div>
+//             <input type="{{type}}">
+//             <span id="my-id">
+//     </div>`);
+// const component = activateComponent(parsers, root);
+// component.update(data);
+
+const data = {
+    word: 'World',
+    x: 3,
+    y: 4,
+    color: 'yellowish-brown'
+}
+const component = createUpdatableComponent(`
+<div title="hello {{word}}!" class="brown {{color}} yellow">
+    <span>What is {{x}} + {{y}}?</span>
+    It is {{ x + y }}.
+</div>`);
 component.update(data);
+
+document.querySelector('.anchor').append(
+    component.element
+);

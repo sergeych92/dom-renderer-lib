@@ -1,8 +1,10 @@
-import { MATCHERS, EMPTY_CURLIES, PROHIBITED_VARIABLE_NAMES, DYNAMIC_VAR_NAME, JS_VARNAME_MATCHER } from "./constants";
+import { MATCHERS, EMPTY_CURLIES } from "./constants";
 import { setDiff } from "./utils";
+import { parseCurlie } from "./parse-curlie";
 
 export class AttributeCurlieParser {
     get id() { return this._id; }
+    get name() { return this._name; }
 
     constructor({name, value, id = null}) {
         this._name = name;
@@ -11,8 +13,8 @@ export class AttributeCurlieParser {
     }
 
     parse(element) {
-        const {curlies, tagValues} = this._splitTagValue(element);
-        const expressions = this._generateExpressions(element, curlies);
+        const {curlies, tagValues} = this._splitTagValue();
+        const expressions = curlies.map(c => parseCurlie(c));
 
         let tagSetter;
         if (this._name === 'class') {
@@ -23,7 +25,7 @@ export class AttributeCurlieParser {
         return tagSetter; // expression
     }
 
-    _splitTagValue(element) {
+    _splitTagValue() {
         const curlies = [];
         const tagValues = this._value.replace(MATCHERS.TAG_CURLIES_INNER, (_, curlieContent) => {
             curlies.push(curlieContent);
@@ -32,41 +34,14 @@ export class AttributeCurlieParser {
         return {curlies, tagValues};
     }
 
-    // element - Dom element; curlies - the abc of {{abc}} as text
-    _generateExpressions(element, curlies) {
-        return curlies.map(c => {
-            let match = null;
-            // Actually, js names are fairly complex: https://stackoverflow.com/questions/1661197/what-characters-are-valid-for-javascript-variable-names
-            if (match = JS_VARNAME_MATCHER.exec(c)) { // simple variable "word"
-                const variable = match[1];
-                return data => data[variable];
-            } else {
-                const variables = [...c.matchAll(/[\w-]+/g)].map(m => m[0]);
-                // TODO: go a step further and only allow a set of whitelisted characters like +, -, (, ), !, &&
-                if (variables.some(name => PROHIBITED_VARIABLE_NAMES.includes(name))) {
-                    throw new SyntaxError('{{}} are not allowed to contain any js other than simple expressions');
-                }
-                // TODO: could supply the model as a second parameter to this parse function and then provide the dynamic
-                // function with model.keys
-                let expr = new Function(...variables, `'use strict'; return ${c};`);
-                return data => {
-                    try {
-                        return expr.apply(data, variables.map(v => data[v]));
-                    } catch (err) {
-                        throw new Error(`Expression "${c}" threw an error: ${err}`);
-                    }
-                }
-            }
-            // TODO: identify a?.b?.c and replace this construct with safe variable access
-            // allow pipes like {{ a | number:}} ?
-        });
-    }
-
     _createClassSetter(element, tagValues, expressions) {
+        tagValues = tagValues.map(v => v.trim()); // classes cannot contain spaces
         element.classList.add(...tagValues);
         let prevClasses = new Set();
         return data => {
-            const nextClasses = new Set(expressions.map(expr => expr(data)));
+            const nextClasses = new Set(
+                expressions.map(expr => expr(data)).filter(expr => !!expr).map(expr => String(expr).trim())
+            );
             const addClasses = setDiff(nextClasses, prevClasses);
             const deleteClasses = setDiff(prevClasses, nextClasses);
             prevClasses = nextClasses;
@@ -98,6 +73,7 @@ export class AttributeCurlieParser {
                     if (index < fillValues.length) {
                         prev.push(fillValues[index]);
                     }
+                    return prev;
                 }, []).join('');
                 if (prevValue !== resultStr) {
                     element.setAttribute(this._name, resultStr);

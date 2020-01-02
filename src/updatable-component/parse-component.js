@@ -20,13 +20,17 @@ export function parseComponent(template) {
             // go through attributes and transform all curlies
             const tagExprs = [];
             let tagId = null;
-            const deAttributed = openingTag.replace(MATCHERS.ATTR_AND_CURLIE_VALUE, (_, name, value) => {
+            const deAttributed = openingTag.replace(MATCHERS.ATTR_AND_CURLIE_VALUE, (full, name, fullValue, value) => {
                 tagExprs.push({
                     name,
                     value // contains "value1 {{value2 + 'smt'}} value3"
                 });
-                tagId = lastId++;
-                return tagExprs.length === 1 ? ` ${ID_MARKER}="${tagId}" ` : '';
+                if (tagExprs.length === 1) {
+                    tagId = lastId++;
+                    return ` ${ID_MARKER}="${tagId}" `;
+                } else {
+                    return '';
+                }
             });
             if (tagExprs.length) {
                 if (tagExprs.length === 1) {
@@ -60,10 +64,10 @@ export function parseComponent(template) {
     });
 
     // Process: <div>title="yes {{hi}}"</div> -- not an attribute
-    const deInnerTags = deClosingTags.replace(MATCHERS.TAG_CURLIES_INNER, (_, expression) => {
+    const deInnerTags = deClosingTags.replace(MATCHERS.TAG_CURLIES_INNER, (_, curlie) => {
         parsers.push(new StandaloneParser({
             id: lastId,
-            expression
+            curlie
         }));
         return `<span ${ID_MARKER}="${lastId++}"></span>`;
     });
