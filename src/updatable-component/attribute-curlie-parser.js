@@ -22,6 +22,7 @@ export class AttributeCurlieParser {
         } else { // apply generic setAttribute logic
             tagSetter = this._createGenericAttrSetter(element, tagValues, expressions);
         }
+        // TODO: this._name === 'style'
         return tagSetter; // expression
     }
 
