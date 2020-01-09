@@ -4,6 +4,9 @@ function ToDoNote(done) {
     this._done = done;
 }
 
+ToDoNote.PROHIBITED_WORDS = new Set(['tomorrow', 'optional', 'postpone', 'unnecessary', 'later', 'todo']);
+ToDoNote.MAX_LENGTH = 100;
+
 defineConst(ToDoNote, [
     ['PROHIBITED_WORDS', new Set(['tomorrow', 'optional', 'postpone', 'unnecessary', 'later', 'todo'])],
     ['MAX_LENGTH', 100]

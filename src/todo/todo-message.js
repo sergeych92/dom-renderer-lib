@@ -1,18 +1,30 @@
 import { defineConst } from "./class-utils";
 
+let private = WeakMap();
+
 function ToDoMessage({done, message}) {
     ToDoNote.call(this, done)
-    this._message = message;
+    private.set(this, {
+        a: 23
+    });
 }
 
 defineConst(ToDoMessage, 'MAX_LENGTH', 200);
 
 Object.setPrototypeOf(ToDoMessage, ToDoNote);
 
+
 ToDoMessage.prototype = Object.create(ToDoNote.prototype, {
     ...Object.getOwnPropertyDescriptors({
         // Simple properties with default descriptor settings
-        constructor: ToDoMessage
+        constructor: ToDoMessage,
+        showA: function() {
+            const a = private.get(this).a;
+            console.log(a);
+        },
+        updateA: function(v) {
+            private.get(this).a = v;
+        }
     }),
 
     // Properties with non-default descriptor (especially getters and setters)
