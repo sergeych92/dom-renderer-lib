@@ -63,7 +63,9 @@ document.querySelector('.anchor').append(
 
 
 
-let classes = {};
+let classes = {
+    secret: new WeakMap()
+};
 
 (function(common) {
 
@@ -102,14 +104,15 @@ let classes = {};
         }
     });
 
-    const secret = new WeakMap();
+    const secret = common.secret;
     function Animal() {
-        secret.set(this, new AnimalInternal());
+        secret.set(this, new this.internalConstructor());
     }
 
     Animal.MAX_WEIGHT_KG = AnimalInternal.MAX_WEIGHT_KG;
 
     Object.assign(Animal.prototype, {
+        internalConstructor: AnimalInternal,
         run: function () {
             return secret.get(this).run();
         },
@@ -160,14 +163,15 @@ let classes = {};
     });
 
 
-    const secret = new WeakMap();
+    const secret = common.secret;
     function Bird() {
-        secret.set(this, new BirdInternal());
+        Animal.call(this);
     }
     Object.setPrototypeOf(Bird, Animal);
     Bird.prototype = Object.create(Animal.prototype);
     Object.assign(Bird.prototype, {
         constructor: Bird,
+        internalConstructor: BirdInternal,
         run: function () {
             secret.get(this).run();
         }
@@ -190,6 +194,6 @@ let classes = {};
     const bird = new Bird();
     bird.run();
 
-    bird.eat(20);
+    bird.eat(30);
     bird.run();
 })(classes);
