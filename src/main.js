@@ -62,67 +62,134 @@ document.querySelector('.anchor').append(
 );
 
 
-(function() {
-    const secret = new WeakMap();
 
-    function WordCounter() {
-        secret.set(this, {
-            textStr: '',
-            wordList: new Map(),
-            splitStr: (str) => {
-                return str.split(/[\s\W]+/).filter(s => !!s);
-            },
-            calcWordFrequencies: (wordList) => {
-                const counts = new Map();
-                for (let word of wordList) {
-                    if (counts.has(word)) {
-                        counts.set(word, counts.get(word) + 1);
-                    } else {
-                        counts.set(word, 1);
-                    }
-                }
-                return counts;
-            }
-        });
+let classes = {};
+
+(function(common) {
+
+    // ANIMAL
+    function AnimalInternal() {
+        this.__weight = 1;
     }
 
-    Object.defineProperties(WordCounter.prototype, {
-        [Symbol.iterator]: {
-            value: function* () {
-                for (let [key] of secret.get(this).wordList) {
-                    yield key;
-                }
+    AnimalInternal.MAX_WEIGHT_KG = 5;
+
+    Object.assign(AnimalInternal.prototype, {
+        run: function () {
+            if (this.__weight > this.constructor.MAX_WEIGHT_KG) {
+                console.log('Animal is too fat to move');
+                return false;
+            } else {
+                console.log(`Animal is moving with a weight of ${this.__weight} kg`);
+                return true;
             }
         },
-        textStr: {
-            get: function () {
-                return secret.get(this).textStr;
-            },
-            set: function(str) {
-                if (str) {
-                    const self = secret.get(this);
-                    if (self.textStr !== str) {
-                        self.textStr = str;
-                        const list = self.splitStr(str);
-                        self.wordList = self.calcWordFrequencies(list);
-                    }
-                } else {
-                    str = '';
-                }
-            },
-            enumerable: true
+
+        eat: function (kg) {
+            console.log(`Animal has eaten ${kg} kg.`);
+            this.__weight += this._gainWeight(kg);
+            this.__validateWeight();
         },
-        getWordFrequency: {
-            value: function (word) {
-                return secret.get(this).wordList.get(word);
+
+        _gainWeight: function (kg) {
+            return 0;
+        },
+
+        __validateWeight: function() {
+            if (this.__weight < 0 || this.__weight > this.constructor.MAX_WEIGHT_KG * 2) {
+                throw new RangeError(`The weight cannot be negative or exceed ${this.constructor.MAX_WEIGHT_KG} kg.`);
             }
         }
     });
 
-    let counter = new WordCounter();
-    counter.textStr = 'Hello there. Hey, are you there? Maria, are you allright?!';
-    console.log(`String: "${counter.textStr}"`);
-    for (let word of counter) {
-        console.log(`Word: "${word}", frequency: ${counter.getWordFrequency(word)}`);
+    const secret = new WeakMap();
+    function Animal() {
+        secret.set(this, new AnimalInternal());
     }
-})();
+
+    Animal.MAX_WEIGHT_KG = AnimalInternal.MAX_WEIGHT_KG;
+
+    Object.assign(Animal.prototype, {
+        run: function () {
+            return secret.get(this).run();
+        },
+        eat: function (kg) {
+            return secret.get(this).eat(kg);
+        }
+    });
+
+    Object.assign(common, {
+        Animal,
+        AnimalInternal
+    });
+})(classes);
+
+
+
+
+
+(function (common) {
+    const {Animal, AnimalInternal} = common;
+
+    // BIRD
+    function BirdInternal() {
+        AnimalInternal.call(this);
+        this._wingspan = 1; // feet
+    }
+    Object.setPrototypeOf(BirdInternal, AnimalInternal);
+
+    BirdInternal.MAX_WEIGHT_KG = 3;
+
+    BirdInternal.prototype = Object.create(AnimalInternal.prototype);
+    Object.assign(BirdInternal.prototype, {
+        constructor: BirdInternal,
+
+        run: function () {
+            const moved = AnimalInternal.prototype.run.call(this);
+            if (moved) {
+                console.log(`Bird is flying with a wingspan of ${this._wingspan} feet`);
+            }
+            return moved;
+        },
+
+        _gainWeight: function (kg) {
+            const newWeight = kg * 0.1;
+            console.log(`Bird has gained ${newWeight} kg.`);
+            return newWeight;
+        }
+    });
+
+
+    const secret = new WeakMap();
+    function Bird() {
+        secret.set(this, new BirdInternal());
+    }
+    Object.setPrototypeOf(Bird, Animal);
+    Bird.prototype = Object.create(Animal.prototype);
+    Object.assign(Bird.prototype, {
+        constructor: Bird,
+        run: function () {
+            secret.get(this).run();
+        }
+    });
+
+    Object.assign(common, {
+        Bird,
+        BirdInternal
+    });
+})(classes);
+
+
+
+
+
+
+(function (common) {
+    // TEST
+    const {Bird} = common;
+    const bird = new Bird();
+    bird.run();
+
+    bird.eat(20);
+    bird.run();
+})(classes);
