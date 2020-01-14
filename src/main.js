@@ -106,7 +106,10 @@ let classes = {
 
     const secret = common.secret;
     function Animal() {
-        secret.set(this, new this.internalConstructor());
+        const obj = Object.create(this.internalConstructor.prototype);
+        this.internalConstructor.apply(obj, arguments);
+
+        secret.set(this, obj);
     }
 
     Animal.MAX_WEIGHT_KG = AnimalInternal.MAX_WEIGHT_KG;
@@ -135,20 +138,21 @@ let classes = {
     const {Animal, AnimalInternal} = common;
 
     // BIRD
+    const base = AnimalInternal;
     function BirdInternal() {
-        AnimalInternal.call(this);
+        base.call(this);
         this._wingspan = 1; // feet
     }
-    Object.setPrototypeOf(BirdInternal, AnimalInternal);
+    Object.setPrototypeOf(BirdInternal, base);
 
     BirdInternal.MAX_WEIGHT_KG = 3;
 
-    BirdInternal.prototype = Object.create(AnimalInternal.prototype);
+    BirdInternal.prototype = Object.create(base.prototype);
     Object.assign(BirdInternal.prototype, {
         constructor: BirdInternal,
 
         run: function () {
-            const moved = AnimalInternal.prototype.run.call(this);
+            const moved = base.prototype.run.call(this);
             if (moved) {
                 console.log(`Bird is flying with a wingspan of ${this._wingspan} feet`);
             }
@@ -165,7 +169,7 @@ let classes = {
 
     const secret = common.secret;
     function Bird() {
-        Animal.call(this);
+        Animal.apply(this, arguments);
     }
     Object.setPrototypeOf(Bird, Animal);
     Bird.prototype = Object.create(Animal.prototype);
@@ -189,11 +193,62 @@ let classes = {
 
 
 (function (common) {
-    // TEST
-    const {Bird} = common;
-    const bird = new Bird();
-    bird.run();
+    const {BirdInternal, Bird} = common;
 
-    bird.eat(30);
-    bird.run();
+    const base = BirdInternal;
+    function SparrowInternal(name) {
+        base.call(this);
+        this.__name = name;
+    }
+    Object.setPrototypeOf(SparrowInternal, base);
+    SparrowInternal.prototype = Object.create(base.prototype);
+    Object.assign(SparrowInternal.prototype, {
+        constructor: SparrowInternal,
+        run: function() {
+            const moved = base.prototype.run.call(this);
+            if (moved) {
+                console.log(`Sparrow named ${this.__name} is flying.`);
+            }
+            return moved;
+        }
+    });
+    Object.defineProperty(SparrowInternal.prototype, 'name', {
+        get: function() {
+            return this.__name;
+        }
+    });
+
+
+    function Sparrow(name) {
+        Bird.call(this, name);
+    }
+    Object.setPrototypeOf(Sparrow, Bird);
+    Sparrow.prototype = Object.create(Bird.prototype);
+    Object.assign(Sparrow.prototype, {
+        constructor: Sparrow,
+        internalConstructor: SparrowInternal
+    });
+    Object.defineProperty(Sparrow.prototype, 'name', {
+        get: function() {
+            return common.secret.get(this).name;
+        }
+    });
+
+    Object.assign(common, {
+        Sparrow,
+        SparrowInternal
+    });
+})(classes);
+
+
+
+
+(function (common) {
+    // TEST
+    const {Sparrow} = common;
+    const sparrow = new Sparrow('Chirik 007');
+    sparrow.run();
+
+    sparrow.eat(30);
+    sparrow.run();
 })(classes);
