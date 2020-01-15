@@ -1,9 +1,3 @@
-function validateClassName(name) {
-    if (!name || !/^[A-Z]\w*$/.test(name)) {
-        throw new TypeError('Class name must start with a capital letter and be followed by alphanumeric symbols or _');
-    }
-}
-
 function validateParent(parent) {
     if (parent && typeof parent !== 'function') {
         throw new TypeError('Parent must be a constructor function.');
@@ -24,17 +18,16 @@ export function ClassBuilder(params) {
         throw new TypeError('class builder must be created with parameters');
     }
 
-    validateClassName(params.name);
-    validateParent(params.parent);
-    validateConstructor(params.constructor);
+    var parent = params.parent;
+    var constructor = params.constructor;
+
+    validateParent(parent);
+    validateConstructor(constructor);
 
     if (!this || Object.getPrototypeOf(this) !== ClassBuilder.prototype) {
         return new ClassBuilder(params);
     }
 
-    this._params = params;
-
-    var constructor = this._params.constructor;
     if (!constructor) {
         if (parent) {
             constructor = function(args) {
@@ -45,32 +38,34 @@ export function ClassBuilder(params) {
             constructor = function () {};
         }
     }
-    this._params.constructor = constructor;
+    
+    this._variables = {};
+    var variables = this._variables;
+    this.clazz = function () {
+        const superFn = parent
+            ? function () {
+                parent.apply(this, arguments);
+                // Assign all of the variables
+                for (var v in variables) {
+                    if (variables.hasOwnProperty(v)) {
+                        this[v] = variables[v];
+                    }
+                }
+            }.bind(this)
+            : null;
+        const args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
+        
+        constructor.apply(this, args);
+    };
+
+    if (parent) {
+        this.clazz.prototype = Object.create(parent.prototype);
+    }
 }
 
 Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors({
     build: function() {
-        var name = this._params.name;
-        var parent = this._params.parent;
-        var constructor = this._params.constructor;
-        var obj = {};
-
-        obj[name] = function () { // assign to obj[name] in order to force the function to have the given name
-            const superFn = parent
-                ? function () {
-                    parent.apply(this, arguments);
-                    // TODO: assign all of the variables here
-                }.bind(this)
-                : null;
-            const args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
-            
-            constructor.apply(this, args);
-        };
-
-        if (parent) {
-            obj[name].prototype = Object.create(parent.prototype);
-        }
-        return obj[name];
+        return this.clazz;
     }
 }));
 

@@ -11,7 +11,7 @@ test('create simple class', () => {
 
     expect(Animal).toBeTruthy();
     expect (typeof Animal).toEqual('function');
-    expect(Bird.prototype).toEqual(Object.prototype);
+    expect(Animal.prototype).toEqual(Object.prototype);
 
 
     const animal = new Animal('sunflower seeds');
