@@ -1,6 +1,7 @@
 import '../css/style.scss';
 
 import { createUpdatableComponent } from './updatable-component/utils';
+import { ClassBuilder } from './animals/class-builder';
 
 // const data = {
 //     optionalColor: 'white',
@@ -60,3 +61,23 @@ component.update(data);
 document.querySelector('.anchor').append(
     component.element
 );
+
+
+
+var Animal = ClassBuilder({
+    name: 'Animal',
+    constructor: function (favoriteFood) {
+        this.legs = 4;
+        this.__favoriteFood = favoriteFood;
+    }
+}).build();
+console.dir(Animal);
+const animal = new Animal('sunflower seeds');
+animal.toString = function () {
+    return 'class Animal';
+}
+console.log(animal);
+
+
+console.log('inheritance: ');
+console.log(animal instanceof Animal);
