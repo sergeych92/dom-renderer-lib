@@ -64,10 +64,26 @@ export function ClassBuilder(params) {
 }
 
 Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors({
+    private: function(defs) {
+
+    },
     build: function() {
         return this.clazz;
     }
 }));
+
+
+/*
+
+Animal
+__isEndangered = true
+showSummary() --> this.__isEndangered - OK
+
+Pigeon extends Animal
+__wingspan = 2 feet
+reportStatus() --> __wingspan - OK; __isEndangered - error: cannot access its parent's private vars
+
+*/
 
 
 // var Bird = ClassBuilder({
@@ -111,11 +127,9 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
 //             this.__weight += this._gainWeight(kg);
 //             this.__validateWeight();
 //         },
-//         $get_favoriteFood: function () {
-//             return this.__favoriteFood;
-//         },
-//         $set_favariteFood: function(value) {
-//             this.__favoriteFood = food;
+//         favoriteFood: {
+//             get: function () { return this.__favoriteFood; },
+//             set: function(value) { this.__favoriteFood = (value || '').toString().trim(); }
 //         }
 //     }
 // })
