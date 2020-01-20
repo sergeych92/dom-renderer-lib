@@ -10,6 +10,14 @@ function validateConstructor(constructor) {
     }
 }
 
+function validateDeclaredName(accessObj, name, isVar) {
+    if (accessObj.private.hasOwnProperty(name)
+        || accessObj.protected.hasOwnProperty(name)
+        || accessObj.public.hasOwnProperty(name)) {
+            const entityName = isVar ? 'variable' : 'method';
+            throw new TypeError('A ' + entityName + ' with the name ' + name + ' has already been declared.');
+        }
+}
 
 export function ClassBuilder(params) {
     'use strict';
@@ -45,12 +53,7 @@ export function ClassBuilder(params) {
         const superFn = parent
             ? function () {
                 parent.apply(this, arguments);
-                // Assign all of the variables
-                for (var v in variables) {
-                    if (variables.hasOwnProperty(v)) {
-                        this[v] = variables[v];
-                    }
-                }
+                // TODO: Assign all protected and public variables to this object
             }.bind(this)
             : null;
         const args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
@@ -61,11 +64,40 @@ export function ClassBuilder(params) {
     if (parent) {
         this.clazz.prototype = Object.create(parent.prototype);
     }
+
+    this._variables = {
+        private: {},
+        protected: {},
+        public: {}
+    };
+    this._methods = {
+        private: {},
+        protected: {},
+        public: {}
+    };
+}
+
+function saveDefinitions(defs, access) {
+    Object.keys(defs || {}).forEach(function (key) {
+        if (typeof defs[key] === 'function') {
+            validateDeclaredName(this._methods, key, false);
+            this._methods[access][key] = defs[key];
+        } else {
+            validateDeclaredName(this._variables, key, true);
+            this._variables[access][key] = defs[key];
+        }
+    });
 }
 
 Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors({
     private: function(defs) {
-
+        saveDefinitions.call(this, defs, 'private');
+    },
+    protected: function(defs) {
+        saveDefinitions.call(this, defs, 'protected');
+    },
+    public: function(defs) {
+        saveDefinitions.call(this, defs, 'public');
     },
     build: function() {
         return this.clazz;
