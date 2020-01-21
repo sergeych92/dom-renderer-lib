@@ -26,16 +26,42 @@ export function ClassBuilder(params) {
         throw new TypeError('class builder must be created with parameters');
     }
 
-    var parent = params.parent;
-    var constructor = params.constructor;
+    this._parent = params.parent;
+    this._constructor = params.constructor;
 
-    validateParent(parent);
-    validateConstructor(constructor);
+    validateParent(this._parent);
+    validateConstructor(this._constructor);
 
     if (!this || Object.getPrototypeOf(this) !== ClassBuilder.prototype) {
         return new ClassBuilder(params);
     }
 
+    this._variables = {
+        private: {},
+        protected: {},
+        public: {}
+    };
+    this._methods = {
+        private: {},
+        protected: {},
+        public: {}
+    };
+}
+
+function saveDefinitions(defs, access) {
+    Object.keys(defs || {}).forEach(function (key) {
+        if (typeof defs[key] === 'function') {
+            validateDeclaredName(this._methods, key, false);
+            this._methods[access][key] = defs[key];
+        } else {
+            validateDeclaredName(this._variables, key, true);
+            this._variables[access][key] = defs[key];
+        }
+    });
+}
+
+function createInnerClass() {
+    var constructor = this._constructor;
     if (!constructor) {
         if (parent) {
             constructor = function(args) {
@@ -64,29 +90,6 @@ export function ClassBuilder(params) {
     if (parent) {
         this.clazz.prototype = Object.create(parent.prototype);
     }
-
-    this._variables = {
-        private: {},
-        protected: {},
-        public: {}
-    };
-    this._methods = {
-        private: {},
-        protected: {},
-        public: {}
-    };
-}
-
-function saveDefinitions(defs, access) {
-    Object.keys(defs || {}).forEach(function (key) {
-        if (typeof defs[key] === 'function') {
-            validateDeclaredName(this._methods, key, false);
-            this._methods[access][key] = defs[key];
-        } else {
-            validateDeclaredName(this._variables, key, true);
-            this._variables[access][key] = defs[key];
-        }
-    });
 }
 
 Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors({
@@ -100,6 +103,8 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
         saveDefinitions.call(this, defs, 'public');
     },
     build: function() {
+        var innerClass = createInnerClass.call(this);
+
         return this.clazz;
     }
 }));
