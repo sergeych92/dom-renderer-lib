@@ -46,66 +46,127 @@ export function ClassBuilder(params) {
         protected: {},
         public: {}
     };
+    this._base = {};
 }
 
-function saveDefinitions(defs, access) {
-    Object.keys(defs || {}).forEach(function (key) {
-        if (typeof defs[key] === 'function') {
-            validateDeclaredName(this._methods, key, false);
-            this._methods[access][key] = defs[key];
-        } else {
-            validateDeclaredName(this._variables, key, true);
-            this._variables[access][key] = defs[key];
-        }
+function assignNonPrivateVars(vars) {
+    Object.keys(vars.protected).forEach(function (name) {
+        Object.defineProperty(this, name, {
+            value: vars.protected[name],
+            writable: true
+        });
     });
-}
-
-function createInnerClass() {
-    var constructor = this._constructor;
-    if (!constructor) {
-        if (parent) {
-            constructor = function(args) {
-                var base = args[0];
-                base.apply(this, args.slice(1));
-            };
-        } else {
-            constructor = function () {};
-        }
-    }
-    
-    this._variables = {};
-    var variables = this._variables;
-    this.clazz = function () {
-        const superFn = parent
-            ? function () {
-                parent.apply(this, arguments);
-                // TODO: Assign all protected and public variables to this object
-            }.bind(this)
-            : null;
-        const args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
-        
-        constructor.apply(this, args);
-    };
-
-    if (parent) {
-        this.clazz.prototype = Object.create(parent.prototype);
-    }
+    Object.keys(vars.public).forEach(function (name) {
+        Object.defineProperty(this, name, {
+            value: vars.public[name],
+            writable: true
+        });
+    });
 }
 
 Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors({
     private: function(defs) {
-        saveDefinitions.call(this, defs, 'private');
+        this._saveDefinitions(defs, 'private');
     },
     protected: function(defs) {
-        saveDefinitions.call(this, defs, 'protected');
+        this._saveDefinitions(defs, 'protected');
     },
     public: function(defs) {
-        saveDefinitions.call(this, defs, 'public');
+        this._saveDefinitions(defs, 'public');
     },
     build: function() {
-        var innerClass = createInnerClass.call(this);
+        var innerClass = this._createInnerClass();
 
         return this.clazz;
+    },
+
+    _saveDefinitions: function(defs, access) {
+        if (typeof defs === 'function') {
+            defs = defs(this._base);
+        }
+        Object.keys(defs || {}).forEach(function (key) {
+            if (typeof defs[key] === 'function') {
+                validateDeclaredName(this._methods, key, false);
+                this._methods[access][key] = defs[key];
+            } else {
+                validateDeclaredName(this._variables, key, true);
+                this._variables[access][key] = defs[key];
+            }
+        });
+    },
+    
+    _setBaseMethods: function() {
+        var parentRef = this.parent.prototype;
+        var methodHost = parentRef;
+        while (methodHost !== Object.prototype) {
+            Object.keys(methodHost)
+                .filter(function (method) { return typeof methodHost[method] === 'function'; })
+                .forEach(function (method) {
+                    if (!this._base.hasOwnProperty(method)) {
+                        Object.defineProperty(this._base, method, {
+                            value: function () {
+                                var publicState = Object.getPrototypeOf(this);
+                                parentRef[method].call(publicState);
+                            }
+                        });
+                    }
+                });
+            methodHost = Object.getPrototypeOf(methodHost);
+        }
+        Object.seal(this._base);
+    },
+    
+    _setConstructor: function() {
+        if (!this._constructor) {
+            if (this._parent) {
+                this._constructor = function(args) {
+                    var base = args[0];
+                    base.apply(this, args.slice(1));
+                };
+            } else {
+                this._constructor = function () {};
+            }
+        }
+        return this._constructor;
+    },
+
+    _createInnerClass: function() {
+        var constructor = this._setConstructor();
+        var parent = this._parent;
+        
+        var variables = this._variables;
+        var globalId = 0;
+        this._innerClass = function () {
+            var superFn = parent
+                ? function () {
+                    parent.apply(this, arguments);
+                    assignNonPrivateVars.call(this, variables);
+                }.bind(this)
+                : null;
+            var args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
+            
+            // TODO: implement setting private variables and methods here
+            this._id = globalId++;
+            privateState[this._id] = Object.create(this);
+            Object.assign(privateState[this._id], {
+                _name: name,
+                _thingsSaid: 0,
+                _log: function(msg) {
+                    console.log(this._name + ': ' + msg);
+                }
+                // TODO: set up setters for protected and public variables that set obj.__proto__ vars with the same data
+                // undeclared variables are not allowed
+                // variables cannot be removed
+            });
+
+            constructor.apply(this, args);
+        };
+    
+        if (parent) {
+            this._setBaseMethods();
+            this._innerClass.prototype = Object.create(parent.prototype);
+            // TODO: add methods and wrap them in private state calls
+        }
     }
 }));
 
