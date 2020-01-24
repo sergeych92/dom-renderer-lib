@@ -64,91 +64,19 @@ document.querySelector('.anchor').append(
 
 
 
-// var Animal = ClassBuilder({
-//     name: 'Animal',
-//     constructor: function (favoriteFood) {
-//         this.legs = 4;
-//         this.__favoriteFood = favoriteFood;
-//     }
-// }).build();
-// console.dir(Animal);
-// const animal = new Animal('sunflower seeds');
-// animal.toString = function () {
-//     return 'class Animal';
-// }
-// console.log(animal);
-
-
-// console.log('inheritance: ');
-// console.log(animal instanceof Animal);
-
-
-function Animal(legs) {
-    this._legs = legs;
-}
-
-Object.assign(Animal.prototype, {
-    saySomething: function() {
-        console.log('I cannot speak.');
-        this._updateSaidCounter();
-    },
-    _updateSaidCounter: function () {
-        console.log('Do nothing');
+var Animal = ClassBuilder({
+    name: 'Animal',
+    constructor: function (favoriteFood) {
+        this.__favoriteFood = favoriteFood;
     }
-});
-
-
-
-let privateState = {};
-let pigeonId = 0;
-function Pigeon(legs, name) {
-    Animal.call(this, legs);
-    this._id = pigeonId++;
-    privateState[this._id] = Object.create(this);
-    Object.assign(privateState[this._id], {
-        _name: name,
-        _thingsSaid: 0,
-        _log: function(msg) {
-            console.log(this._name + ': ' + msg);
-        }
-        // TODO: set up setters for protected and public variables that set obj.__proto__ vars with the same data
-        // undeclared variables are not allowed
-        // variables cannot be removed
-    });
-}
-
-Pigeon.prototype = Object.create(Animal.prototype);
-
-const base = {
+}).private({
+    __favoriteFood: null
+})
+.public({
+    legs: 4,
     saySomething: function () {
-        const publicState = Object.getPrototypeOf(this);
-        Animal.prototype.saySomething.call(publicState);
-    },
-    _updateSaidCounter: function() {
-        const publicState = Object.getPrototypeOf(this);
-        Animal.prototype._updateSaidCounter.call(publicState);
+        console.log('This is an animal with ' + this.legs + ' legs, whose favorite food is ' + this.__favoriteFood)
     }
-};
-
-const saySomething = function(base) {
-    base.saySomething.call(this);
-    this._log('Co-co');
-};
-
-const _updateSaidCounter = function() {
-    this._thingsSaid++;
-    this._log('Things said: ' + this._thingsSaid);
-}
-
-Object.assign(Pigeon.prototype, {
-    saySomething: function () {
-        saySomething.call(privateState[this._id], base);
-    },
-    _updateSaidCounter() {
-        _updateSaidCounter.call(privateState[this._id]);
-    }
-});
-
-let obj = new Pigeon(2, 'Pijey');
-obj.saySomething();
-obj.saySomething();
+}).build();
+const animal = new Animal('sunflower seeds');
+animal.saySomething();
