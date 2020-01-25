@@ -55,7 +55,8 @@ function assignMethods(target, methods, privateState) {
     forEachOwnMethod(methods, function (name, fn) {
         Object.defineProperty(target, name, {
             value: function () {
-                fn.apply(privateState[this[ID_REF_VAR]], arguments);
+                'use strict';
+                return fn.apply(privateState[this[ID_REF_VAR]], arguments);
             }
         });
     });
@@ -133,8 +134,9 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
                 if (!this._base.hasOwnProperty(name)) { // Base class and its subclass can have the same method
                     Object.defineProperty(this._base, name, {
                         value: function () {
+                            'use strict';
                             var publicState = Object.getPrototypeOf(this);
-                            parentRef[name].call(publicState);
+                            return parentRef[name].call(publicState);
                         }
                     });
                 }
@@ -144,38 +146,48 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
         Object.seal(this._base);
     },
     
-    _setConstructor: function() {
-        if (!this._constructor) {
+    _setConstructor: function(variables) {
+        if (this._constructor) {
+            if (!this._parent) {
+                var constructor = this._constructor;
+                this._constructor = function () {
+                    'use strict';
+                    var publicState = Object.getPrototypeOf(this);
+                    assignVars(publicState, variables.protected);
+                    assignVars(publicState, variables.public);
+                    return constructor.apply(this, arguments);
+                };
+            }
+        } else {
             if (this._parent) {
                 this._constructor = function(args) {
-                    var base = args[0];
-                    base.apply(this, args.slice(1));
+                    'use strict';
+                    var baseConstructor = args[0];
+                    return baseConstructor.apply(undefined, args.slice(1));
                 };
             } else {
-                this._constructor = function () {};
+                this._constructor = function () {
+                    'use strict';
+                    var publicState = Object.getPrototypeOf(this);
+                    assignVars(publicState, variables.protected);
+                    assignVars(publicState, variables.public);
+                };
             }
         }
+
         return this._constructor;
     },
 
     _createInnerClass: function() {
-        var constructor = this._setConstructor();
-        var parent = this._parent;
-        
         var variables = this._variables;
         var methods = this._methods;
+        var parent = this._parent;
         var globalId = 0;
         var privateState = {};
+        var constructor = this._setConstructor(variables);
+        
         var innerClass = function () {
-            var superFn = parent
-                ? function () {
-                    parent.apply(this, arguments);
-                    assignVars(this, variables.protected);
-                    assignVars(this, variables.public);
-                }.bind(this)
-                : null;
-            var args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
-            
+            'use strict';
             Object.defineProperty(this, ID_REF_VAR, { value: globalId++ });
             privateState[this[ID_REF_VAR]] = Object.create(this);
             var privateThis = privateState[this[ID_REF_VAR]];
@@ -184,16 +196,29 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
             assignSeeThroughVars(privateThis, variables.public);
             assignMethods(privateThis, methods.private, privateState);
 
-            constructor.apply(this, args);
+            var superFn = parent
+                ? function () {
+                    'use strict';
+                    var result = parent.apply(this, arguments);
+                    assignVars(this, variables.protected);
+                    assignVars(this, variables.public);
+                    return result;
+                }.bind(this)
+                : null;
+            var args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
+            var constrResult = constructor.apply(privateThis, args);
+            Object.preventExtensions(this);
+            Object.preventExtensions(privateState);
+            return constrResult;
         };
-
-        assignMethods(innerClass.prototype, methods.protected, privateState);
-        assignMethods(innerClass.prototype, methods.public, privateState);
     
         if (parent) {
             this._setBaseMethods();
             innerClass.prototype = Object.create(parent.prototype);
         }
+
+        assignMethods(innerClass.prototype, methods.protected, privateState);
+        assignMethods(innerClass.prototype, methods.public, privateState);
 
         Object.preventExtensions(innerClass);
         return innerClass;

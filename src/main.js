@@ -73,7 +73,7 @@ var Animal = ClassBuilder({
     __favoriteFood: null
 })
 .public({
-    legs: 4,
+    legs: 2,
     saySomething: function () {
         console.log('This is an animal with ' + this.legs + ' legs, whose favorite food is ' + this.__favoriteFood)
     }
