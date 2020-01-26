@@ -63,20 +63,46 @@ document.querySelector('.anchor').append(
 );
 
 
-
 var Animal = ClassBuilder({
-    name: 'Animal',
     constructor: function (favoriteFood) {
         this.__favoriteFood = favoriteFood;
     }
 }).private({
-    __favoriteFood: null
+    __favoriteFood: null,
+    _log: function(msg) {
+        console.log(msg);
+    }
 })
 .public({
     legs: 2,
     saySomething: function () {
-        console.log('This is an animal with ' + this.legs + ' legs, whose favorite food is ' + this.__favoriteFood)
+        this._log('This is an animal with ' + this.legs + ' legs, whose favorite food is ' + this.__favoriteFood);
+        this.legs++;
+        this.__favoriteFood += '. Yammy!';
     }
 }).build();
-const animal = new Animal('sunflower seeds');
-animal.saySomething();
+// const animal = new Animal('sunflower seeds');
+// animal.saySomething();
+// animal.saySomething();
+
+
+var Pigeon = ClassBuilder({
+    parent: Animal,
+    constructor: function (base, favoriteFood, age) {
+        base(favoriteFood);
+        this.__age = age;
+    }
+}).private({
+    __age: 1
+}).public(function (base) {
+    return {
+        status: 'not endangered',
+        saySomething: function() {
+            base.saySomething.call(this);
+            console.log('And the pigeon is ' + this.__age + ' years old.');
+        }
+    };
+}).build();
+
+const pigeon = new Pigeon('sunflower seeds', 5);
+pigeon.saySomething();

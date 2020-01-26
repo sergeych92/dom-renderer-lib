@@ -1,8 +1,6 @@
-var ID_REF_VAR = '_id';
-
 function validateParent(parent) {
-    if (parent && typeof parent !== 'function') {
-        throw new TypeError('Parent must be a constructor function.');
+    if (parent && (typeof parent !== 'function' || typeof parent.prototype.internalConstructor !== 'function')) {
+        throw new TypeError('Parent must be a constructor function with an internal constructor on the prototype.');
     }
 }
 
@@ -18,9 +16,6 @@ function validateDeclaredName(accessObj, name, isVar) {
         || accessObj.protected.hasOwnProperty(name)
         || accessObj.public.hasOwnProperty(name)) {
             throw new TypeError('A ' + entityName + ' with the name ' + name + ' has already been declared.');
-        }
-    if (ID_REF_VAR === name) {
-        throw new TypeError(ID_REF_VAR + ' is used for internal purposes and it is not allowed as a ' + entityName + '.');
     }
 }
 
@@ -46,7 +41,7 @@ function assignSeeThroughVars(target, vars) {
 }
 
 function forEachOwnMethod(target, cb) {
-    Object.keys(target)
+    Object.getOwnPropertyNames(target)
         .filter(function (method) { return typeof target[method] === 'function'; })
         .forEach(function (method) { cb(method, target[method])});
 }
@@ -56,12 +51,15 @@ function assignMethods(target, methods, privateState) {
         Object.defineProperty(target, name, {
             value: function () {
                 'use strict';
-                return fn.apply(privateState[this[ID_REF_VAR]], arguments);
+                return fn.apply(privateState.get(this), arguments);
             }
         });
     });
 }
 
+
+var internalState = new WeakMap(); // WeakMap can be easily polyfilled for ES5.
+// Example: https://github.com/polygonplanet/weakmap-polyfill/blob/master/weakmap-polyfill.js
 
 export function ClassBuilder(params) {
     'use strict';
@@ -73,11 +71,13 @@ export function ClassBuilder(params) {
         return new ClassBuilder(params);
     }
 
-    this._parent = params.parent;
+    var parent = params.parent;
     this._constructor = params.constructor;
 
-    validateParent(this._parent);
+    validateParent(parent);
     validateConstructor(this._constructor);
+    this._parent = parent ? parent.prototype.internalConstructor : null;
+    this._publicParent = parent;
 
     this._variables = {
         private: {},
@@ -106,9 +106,8 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
         return this;
     },
     build: function() {
-        var innerClass = this._createInnerClass();
-        // TODO: hide protected variables and methods
-        return innerClass;
+        this._createInnerClass();
+        return this._createPublicClass();
     },
 
     _saveDefinitions: function(defs, access) {
@@ -127,12 +126,13 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
     },
     
     _setBaseMethods: function() {
-        var parentRef = this.parent.prototype;
+        var parentRef = this._parent.prototype;
         var methodHost = parentRef;
+        var base = this._base;
         while (methodHost !== Object.prototype) {
             forEachOwnMethod(methodHost, function (name) {
-                if (!this._base.hasOwnProperty(name)) { // Base class and its subclass can have the same method
-                    Object.defineProperty(this._base, name, {
+                if (!base.hasOwnProperty(name)) { // Base class and its subclass can have the same method
+                    Object.defineProperty(base, name, {
                         value: function () {
                             'use strict';
                             var publicState = Object.getPrototypeOf(this);
@@ -182,15 +182,13 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
         var variables = this._variables;
         var methods = this._methods;
         var parent = this._parent;
-        var globalId = 0;
-        var privateState = {};
+        var privateState = new WeakMap();
         var constructor = this._setConstructor(variables);
         
         var innerClass = function () {
             'use strict';
-            Object.defineProperty(this, ID_REF_VAR, { value: globalId++ });
-            privateState[this[ID_REF_VAR]] = Object.create(this);
-            var privateThis = privateState[this[ID_REF_VAR]];
+            privateState.set(this, Object.create(this));
+            var privateThis = privateState.get(this);
             assignVars(privateThis, variables.private);
             assignSeeThroughVars(privateThis, variables.protected);
             assignSeeThroughVars(privateThis, variables.public);
@@ -207,36 +205,76 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
                 : null;
             var args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
             var constrResult = constructor.apply(privateThis, args);
-            Object.preventExtensions(this);
-            Object.preventExtensions(privateState);
+            // TODO think of ways of prevent public variables being created in the base class
+            // Object.preventExtensions(this);
+            // Object.preventExtensions(privateState.get(this));
             return constrResult;
         };
     
         if (parent) {
+            innerClass.prototype = Object.create(parent.prototype, {
+                constructor: { value: innerClass }
+            });
             this._setBaseMethods();
-            innerClass.prototype = Object.create(parent.prototype);
         }
 
         assignMethods(innerClass.prototype, methods.protected, privateState);
         assignMethods(innerClass.prototype, methods.public, privateState);
 
         Object.preventExtensions(innerClass);
-        return innerClass;
+        this._innerClass = innerClass;
+    },
+
+    _createPublicClass: function() {
+        var wrapper;
+        var publicParent = this._publicParent
+        if (this._parent) {
+            wrapper = function () {
+                return publicParent.apply(this, arguments);
+            };
+            wrapper.prototype = Object.create(this._publicParent.prototype);
+        } else {
+            wrapper = function () {
+                var internalConstructor = this.internalConstructor;
+                var variableConstructor = function (args) {
+                    return internalConstructor.apply(this, args);
+                };
+                variableConstructor.prototype = internalConstructor.prototype;
+                internalState.set(this, new variableConstructor(arguments));
+            };
+        }
+        Object.defineProperties(wrapper.prototype, {
+            constructor: {value: wrapper},
+            internalConstructor: {value: this._innerClass}
+        });
+
+        Object.keys(this._methods.public).forEach(function (name) {
+            Object.defineProperty(wrapper.prototype, name, {
+                value: function () {
+                    var state = internalState.get(this);
+                    return state[name].apply(state, arguments);
+                }
+            });
+        });
+        Object.keys(this._variables.public).forEach(function (name) {
+            Object.defineProperty(wrapper.prototype, name, {
+                get: function () {
+                    var state = internalState.get(this);
+                    return state[name];
+                },
+                set: function (v) {
+                    var state = internalState.get(this);
+                    state[name] = v;
+                },
+                enumerable: true
+            })
+        });
+
+        this._wrapper = wrapper;
+        return wrapper;
     }
 }));
 
-
-/*
-
-Animal
-__isEndangered = true
-showSummary() --> this.__isEndangered - OK
-
-Pigeon extends Animal
-__wingspan = 2 feet
-reportStatus() --> __wingspan - OK; __isEndangered - error: cannot access its parent's private vars
-
-*/
 
 
 // var Bird = ClassBuilder({
@@ -287,4 +325,3 @@ reportStatus() --> __wingspan - OK; __isEndangered - error: cannot access its pa
 //     }
 // })
 // .build();
-
