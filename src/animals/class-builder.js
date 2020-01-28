@@ -51,13 +51,18 @@ function assignMethods(target, methods, privateState) {
         Object.defineProperty(target, name, {
             value: function () {
                 'use strict';
-                return fn.apply(privateState.get(this), arguments);
+                if (this.hasOwnProperty(IS_PRIVATE_STATE)) {
+                    return fn.apply(privateState.get(Object.getPrototypeOf(this)), arguments);
+                } else {
+                    return fn.apply(privateState.get(this), arguments);
+                }
             }
         });
     });
 }
 
 
+var IS_PRIVATE_STATE = '__$is_private_state$__';
 var internalState = new WeakMap(); // WeakMap can be easily polyfilled for ES5.
 // Example: https://github.com/polygonplanet/weakmap-polyfill/blob/master/weakmap-polyfill.js
 
@@ -189,6 +194,7 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
             'use strict';
             privateState.set(this, Object.create(this));
             var privateThis = privateState.get(this);
+            Object.defineProperty(privateThis, IS_PRIVATE_STATE, {value: true});
             assignVars(privateThis, variables.private);
             assignSeeThroughVars(privateThis, variables.protected);
             assignSeeThroughVars(privateThis, variables.public);

@@ -72,13 +72,17 @@ var Animal = ClassBuilder({
     _log: function(msg) {
         console.log(msg);
     }
-})
-.public({
+}).protected({
+    _updateCount: function () {
+        // Do nothing.
+    }
+}).public({
     legs: 2,
     saySomething: function () {
         this._log('This is an animal with ' + this.legs + ' legs, whose favorite food is ' + this.__favoriteFood);
         this.legs++;
         this.__favoriteFood += '. Yammy!';
+        this._updateCount();
     }
 }).build();
 // const animal = new Animal('sunflower seeds');
@@ -93,7 +97,13 @@ var Pigeon = ClassBuilder({
         this.__age = age;
     }
 }).private({
-    __age: 1
+    __age: 1,
+    __count: 0
+}).protected({
+    _updateCount: function () {
+        this.__count++;
+        console.log('Count is ' + this.__count);
+    }
 }).public(function (base) {
     return {
         status: 'not endangered',
