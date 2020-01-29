@@ -8,7 +8,7 @@ c.update({x: 5});
 Having done this, c becomes a component that can change its markup based on data supplied in subsequent calls to c.update.
 
 
-There is also a ClassBuilder that allows to create classes with full support for private, protected, and public data and methods, while also allowing inheritance. An example:
+There is also a ClassBuilder that allows to create classes with full support for private, protected, and public data and methods, while also allowing inheritance. This builder is written in ES5 JS. An example:
 
 ```
 var Animal = ClassBuilder({
