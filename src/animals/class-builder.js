@@ -192,6 +192,7 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
         
         var innerClass = function () {
             'use strict';
+            
             privateState.set(this, Object.create(this));
             var privateThis = privateState.get(this);
             Object.defineProperty(privateThis, IS_PRIVATE_STATE, {value: true});
@@ -211,9 +212,12 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
                 : null;
             var args = (superFn ? [superFn] : []).concat([].slice.call(arguments));
             var constrResult = constructor.apply(privateThis, args);
-            // TODO think of ways of prevent public variables being created in the base class
-            // Object.preventExtensions(this);
-            // Object.preventExtensions(privateState.get(this));
+            
+            // Prevent extensions to the created object once all of the parents have run their constructors
+            if (Object.getPrototypeOf(this) === innerClass.prototype) {
+                Object.preventExtensions(this);
+                Object.preventExtensions(privateState.get(this));
+            }
             return constrResult;
         };
     

@@ -63,56 +63,117 @@ document.querySelector('.anchor').append(
 );
 
 
+// var Animal = ClassBuilder({
+//     constructor: function (favoriteFood) {
+//         this.__favoriteFood = favoriteFood;
+//     }
+// }).private({
+//     __favoriteFood: null,
+//     _log: function(msg) {
+//         console.log(msg);
+//     }
+// }).protected({
+//     _updateCount: function () {
+//         // Do nothing.
+//     }
+// }).public({
+//     legs: 2,
+//     saySomething: function () {
+//         this._log('This is an animal with ' + this.legs + ' legs, whose favorite food is ' + this.__favoriteFood);
+//         this.legs++;
+//         this.__favoriteFood += '. Yammy!';
+//         this._updateCount();
+//     }
+// }).build();
+// // const animal = new Animal('sunflower seeds');
+// // animal.saySomething();
+// // animal.saySomething();
+
+
+// var Pigeon = ClassBuilder({
+//     parent: Animal,
+//     constructor: function (base, favoriteFood, age) {
+//         base(favoriteFood);
+//         this.__age = age;
+//     }
+// }).private({
+//     __age: 1,
+//     __count: 0
+// }).protected({
+//     _updateCount: function () {
+//         this.__count++;
+//         console.log('Count is ' + this.__count);
+//     }
+// }).public(function (base) {
+//     return {
+//         status: 'not endangered',
+//         saySomething: function() {
+//             base.saySomething.call(this);
+//             console.log('And the pigeon is ' + this.__age + ' years old.');
+//         }
+//     };
+// }).build();
+
+// const pigeon = new Pigeon('sunflower seeds', 5);
+// pigeon.saySomething();
+// pigeon.saySomething();
+
+
+
+
 var Animal = ClassBuilder({
-    constructor: function (favoriteFood) {
-        this.__favoriteFood = favoriteFood;
+    constructor: function (name) {
+        this.__name = name;
     }
 }).private({
-    __favoriteFood: null,
-    _log: function(msg) {
-        console.log(msg);
-    }
+    __name: null
 }).protected({
-    _updateCount: function () {
-        // Do nothing.
-    }
-}).public({
-    legs: 2,
-    saySomething: function () {
-        this._log('This is an animal with ' + this.legs + ' legs, whose favorite food is ' + this.__favoriteFood);
-        this.legs++;
-        this.__favoriteFood += '. Yammy!';
-        this._updateCount();
+    _whatAreYou: function () {
+        return `I am an animal named ${this.__name}`;
     }
 }).build();
-// const animal = new Animal('sunflower seeds');
-// animal.saySomething();
-// animal.saySomething();
 
 
-var Pigeon = ClassBuilder({
+var Bird = ClassBuilder({
     parent: Animal,
-    constructor: function (base, favoriteFood, age) {
-        base(favoriteFood);
-        this.__age = age;
+    constructor: function (base, name, wingspan) {
+        base(name)
+        this.__wingspan = wingspan;
     }
 }).private({
-    __age: 1,
-    __count: 0
-}).protected({
-    _updateCount: function () {
-        this.__count++;
-        console.log('Count is ' + this.__count);
-    }
-}).public(function (base) {
+    __wingspan: null
+}).protected(function (base) {
     return {
-        status: 'not endangered',
-        saySomething: function() {
-            base.saySomething.call(this);
-            console.log('And the pigeon is ' + this.__age + ' years old.');
+        _whatAreYou: function () {
+            const descr = base._whatAreYou.call(this);
+            return `${descr}\nI am a bird with a wingspan of ${this.__wingspan} inches.`;
         }
     };
 }).build();
 
-const pigeon = new Pigeon('sunflower seeds', 5);
-pigeon.saySomething();
+
+var Sparrow = ClassBuilder({
+    parent: Bird,
+    constructor: function (base, name, wingspan, weight) {
+        base(name, wingspan)
+        this.__weight = weight;
+    }
+}).private({
+    __weight: null
+}).protected(function (base) {
+    return {
+        _whatAreYou: function () {
+            const descr = base._whatAreYou.call(this);
+            return `${descr}\nI am a sparrow with a weight of ${this.__weight} ounces.`;
+        }
+    };
+}).public({
+    introduceYourself: function () {
+        const descr = this._whatAreYou();
+        console.log('Description: ' + descr);
+    }
+}).build();
+
+
+const sparrow = new Sparrow('Chirik', 7, 2.2);
+sparrow.introduceYourself();
