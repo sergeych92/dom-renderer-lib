@@ -238,6 +238,7 @@ test('Cannot access private data in base class', () => {
 
                 this.setWeight(13);
                 expect(this.getWeight()).toEqual(13);
+                this.setWeight(12.8);
 
                 expect(this.name).toEqual('Kenny');
                 expect(this.age).toBeUndefined();
@@ -270,6 +271,13 @@ test('Cannot access private data in base class', () => {
                     expect(this.setWeight).toBeUndefined();
 
                     base.testThisProtected.call(this, 1, 2, 3);
+                },
+                testBasePublicWithoutBaseRef: function () {
+                    expect(this.weight).toBeUndefined();
+                    expect(this.getWeight).toBeUndefined();
+                    expect(this.setWeight).toBeUndefined();
+
+                    this.testThisProtected(1, 2, 3); // Can do it like that because derived doesn't define this method
                 }
             };
         })
@@ -295,4 +303,5 @@ test('Cannot access private data in base class', () => {
     const d = new Derived();
     d.testThisPrivate();
     d.testBasePublic();
+    d.testBasePublicWithoutBaseRef();
 });
