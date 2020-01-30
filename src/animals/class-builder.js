@@ -69,15 +69,14 @@ var internalState = new WeakMap(); // WeakMap can be easily polyfilled for ES5.
 export function ClassBuilder(params) {
     'use strict';
 
-    if (!params) {
-        throw new TypeError('class builder must be created with parameters');
-    }
     if (!this || Object.getPrototypeOf(this) !== ClassBuilder.prototype) {
         return new ClassBuilder(params);
     }
 
+    params = params || {};
+
     var parent = params.parent;
-    this._constructor = params.constructor;
+    this._constructor = params.hasOwnProperty('constructor') ? params.constructor : void 0;
 
     validateParent(parent);
     validateConstructor(this._constructor);
@@ -141,7 +140,7 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
                         value: function () {
                             'use strict';
                             var publicState = Object.getPrototypeOf(this);
-                            return parentRef[name].call(publicState);
+                            return parentRef[name].apply(publicState, arguments);
                         }
                     });
                 }
@@ -165,10 +164,10 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
             }
         } else {
             if (this._parent) {
-                this._constructor = function(args) {
+                this._constructor = function() {
                     'use strict';
-                    var baseConstructor = args[0];
-                    return baseConstructor.apply(undefined, args.slice(1));
+                    var baseConstructor = arguments[0];
+                    return baseConstructor.apply(undefined, [].slice.call(arguments, 1));
                 };
             } else {
                 this._constructor = function () {

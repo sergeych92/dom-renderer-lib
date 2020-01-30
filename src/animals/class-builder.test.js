@@ -1,7 +1,7 @@
 import { ClassBuilder } from './class-builder';
 
 test('create simple class', () => {
-    var Animal = ClassBuilder({
+    const Animal = ClassBuilder({
         constructor: function (favoriteFood) {
             this.legs = 4; // is a public variable
             this.__favoriteFood = favoriteFood; // is declared privately
@@ -22,7 +22,7 @@ test('create simple class', () => {
 });
 
 test('check method visibility', () => {
-    var Animal = ClassBuilder({
+    const Animal = ClassBuilder({
         constructor: function (favoriteFood) {
             this.__setFavoriteFood(favoriteFood);
         }
@@ -78,7 +78,7 @@ test('check method visibility', () => {
 });
 
 test('basic inheritance with protected methods across 3 classes', () => {
-    var Animal = ClassBuilder({
+    const Animal = ClassBuilder({
         constructor: function (name) {
             this.__name = name;
         }
@@ -91,7 +91,7 @@ test('basic inheritance with protected methods across 3 classes', () => {
     }).build();
     
     
-    var Bird = ClassBuilder({
+    const Bird = ClassBuilder({
         parent: Animal,
         constructor: function (base, name, wingspan) {
             base(name)
@@ -109,7 +109,7 @@ test('basic inheritance with protected methods across 3 classes', () => {
     }).build();
     
     
-    var Sparrow = ClassBuilder({
+    const Sparrow = ClassBuilder({
         parent: Bird,
         constructor: function (base, name, wingspan, weight) {
             base(name, wingspan)
@@ -157,7 +157,7 @@ test('test private state in base and derived classes', () => {
     }
 
 
-    var Animal = ClassBuilder({
+    const Animal = ClassBuilder({
         constructor: function (favoriteFood) {
             this.__favoriteFood = favoriteFood;
         }
@@ -181,7 +181,7 @@ test('test private state in base and derived classes', () => {
     }).build();
 
 
-    var Pigeon = ClassBuilder({
+    const Pigeon = ClassBuilder({
         parent: Animal,
         constructor: function (base, favoriteFood, age) {
             base(favoriteFood);
@@ -222,3 +222,77 @@ test('test private state in base and derived classes', () => {
 
 
 // Test access of private variables and methods in one class from another
+test('Cannot access private data in base class', () => {
+    const Base = ClassBuilder()
+        .public({
+            workExperience: 3
+        })
+        .protected({
+            testThisProtected: function(a, b, c) {
+                expect(a).toEqual(1);
+                expect(b).toEqual(2);
+                expect(c).toEqual(3);
+
+                expect(this.workExperience).toEqual(3);
+                expect(this.weight).toEqual(12.8);
+
+                this.setWeight(13);
+                expect(this.getWeight()).toEqual(13);
+
+                expect(this.name).toEqual('Kenny');
+                expect(this.age).toBeUndefined();
+                expect(this.setAge).toBeUndefined();
+
+                this.fromBaseToDervived(7, 9);
+            }
+        })
+        .private({
+            weight: 12.8,
+            getWeight: function() { return this.weight; },
+            setWeight: function(v) { this.weight = v; }
+        }).build();
+
+    const Derived = ClassBuilder({ parent: Base })
+        .public(function (base) {
+            return {
+                name: 'Kenny',
+                testThisPrivate: function () {
+                    expect(this.age).toEqual(13);
+                    this.setAge(51);
+                    expect(this.age).toEqual(51);
+                    this.setAge(13);
+                    
+                    expect(this.name).toEqual('Kenny');
+                },
+                testBasePublic: function () {
+                    expect(this.weight).toBeUndefined();
+                    expect(this.getWeight).toBeUndefined();
+                    expect(this.setWeight).toBeUndefined();
+
+                    base.testThisProtected.call(this, 1, 2, 3);
+                }
+            };
+        })
+        .protected({
+            fromBaseToDervived: function(a, b) {
+                expect(a).toEqual(7);
+                expect(b).toEqual(9);
+
+                this.testThisPrivate();
+
+                expect(this.workExperience).toEqual(3);
+                expect(this.weight).toBeUndefined();
+                expect(this.setWeight).toBeUndefined();
+            }
+        })
+        .private({
+            age: 13,
+            getAge: function() { return this.age; },
+            setAge: function(v) { this.age = v;}
+        }).build();
+
+
+    const d = new Derived();
+    d.testThisPrivate();
+    d.testBasePublic();
+});
