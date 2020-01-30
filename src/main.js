@@ -1,7 +1,7 @@
 import '../css/style.scss';
 
 import { createUpdatableComponent } from './updatable-component/utils';
-import { ClassBuilder } from './animals/class-builder';
+import { ClassBuilder } from './class-builder/class-builder';
 
 // const data = {
 //     optionalColor: 'white',
