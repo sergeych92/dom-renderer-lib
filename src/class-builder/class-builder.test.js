@@ -400,6 +400,7 @@ test('Test access to  data in base from within the derived and base constructors
 });
 
 // Check the order of variable assignment in constructors
+// Check variable creation during construction
 // Parent and derived both have user-defined constructors and yet Derived doesn't call it
 // Parent - autocreated constructor, Derived - manually created and base is called and is not called
 // Variable or method declared more than once
