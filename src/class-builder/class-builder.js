@@ -21,11 +21,7 @@ function validateDeclaredName(accessObj, name, isVar) {
 
 function assignVars(target, vars) {
     Object.keys(vars).forEach(function (name) {
-        Object.defineProperty(target, name, {
-            value: vars[name],
-            writable: true,
-            enumerable: true
-        });
+        target[name] = vars[name]; // Set configurable to true to allow same variable overriding
     });
 }
 
@@ -219,9 +215,11 @@ Object.defineProperties(ClassBuilder.prototype, Object.getOwnPropertyDescriptors
             
             // Prevent extensions to the created object once all of the parents have run their constructors
             if (Object.getPrototypeOf(this) === innerClass.prototype) {
-                Object.preventExtensions(this);
-                Object.preventExtensions(privateState.get(this));
+                // Prevent new variables from being added and the ones created during construction to be removed
+                Object.seal(this);
             }
+            Object.seal(privateState.get(this));
+            
             return constrResult;
         };
     

@@ -21,6 +21,7 @@ test('create simple class', () => {
     expect(animal.__favoriteFood).toBeUndefined();
 });
 
+
 test('check method visibility', () => {
     const Animal = ClassBuilder({
         constructor: function (favoriteFood) {
@@ -76,6 +77,7 @@ test('check method visibility', () => {
     expect(animal.__favoriteFood).toBeUndefined();
     expect(animal.__setFavoriteFood).toBeUndefined();
 });
+
 
 test('basic inheritance with protected methods across 3 classes', () => {
     const Animal = ClassBuilder({
@@ -150,6 +152,7 @@ test('basic inheritance with protected methods across 3 classes', () => {
     expect(intro).toMatch(/2.24/);
 });
 
+
 test('test private state in base and derived classes', () => {
     const messages = [];
     const consoleLog = (msg) => {
@@ -221,8 +224,7 @@ test('test private state in base and derived classes', () => {
 });
 
 
-// Test access of private variables and methods in one class from another
-test('Cannot access private data in base class', () => {
+test('Test access of private variables and methods in one class from another', () => {
     const Base = ClassBuilder()
         .public({
             workExperience: 3
@@ -306,7 +308,98 @@ test('Cannot access private data in base class', () => {
     d.testBasePublicWithoutBaseRef();
 });
 
-// Test access to protected and public data in base from within the derived constructor
+
+test('Test access to  data in base from within the derived and base constructors', () => {
+    let wasBaseCalled = false;
+    let wasDerivedCalled = false;
+
+    const Base = ClassBuilder({
+        constructor: function() {
+            // Check access to this class
+            expect(this.__weight).toEqual(13);
+            this.__weight = 14;
+            expect(this.__getWeight()).toEqual(14);
+
+            expect(this._age).toEqual(4);
+            this._age = 5;
+            expect(this._getAge()).toEqual(5);
+
+            expect(this.species).toEqual('pigeon');
+            this.species = 'spider';
+            expect(this.getSpecies()).toEqual('spider');
+
+            // Validate that there is no access to privates and protected and public vars haven't been defined yet
+            expect(this.__infectionRate).toBeUndefined();
+            expect(this.__getInfectionRate).toBeUndefined();
+
+            expect(this._aggressiveness).toBeUndefined();
+            expect(this._getAggressiveness()).toBeUndefined();
+
+            expect(this.name).toBeUndefined();
+            expect(this.getName()).toBeUndefined();
+            wasBaseCalled = true;
+        }
+    }).private({
+        __weight: 13,
+        __getWeight: function() { return this.__weight; }
+    }).protected({
+        _age: 4,
+        _getAge: function() { return this._age; }
+    }).public({
+        species: 'pigeon',
+        getSpecies: function() { return this.species; }
+    }).build();
+
+
+    var Derived = ClassBuilder({
+        parent: Base,
+        constructor: function(base) {
+            base.call(this);
+
+            // Check access to this class
+            expect(this.__infectionRate).toEqual(0.01);
+            this.__infectionRate = 0.05;
+            expect(this.__getInfectionRate()).toEqual(0.05);
+
+            expect(this._aggressiveness).toEqual(0.3);
+            this._aggressiveness = 0.5;
+            expect(this._getAggressiveness()).toEqual(0.5);
+
+            expect(this.name).toEqual('The seed eater');
+            this.name = 'Tom';
+            expect(this.getName()).toEqual('Tom');
+
+            // Check access to Base class
+            expect(this.__weight).toBeUndefined();
+            expect(this.__getWeight).toBeUndefined();
+
+            expect(this._age).toEqual(5);
+            expect(this._getAge()).toEqual(5);
+
+            expect(this.species).toEqual('spider');
+            expect(this.getSpecies()).toEqual('spider');
+            wasDerivedCalled = true;
+        }
+    }).private({
+        __infectionRate: 0.01,
+        __getInfectionRate: function() { return this.__infectionRate; }
+    }).protected({
+        _aggressiveness: 0.3,
+        _getAggressiveness: function() { return this._aggressiveness; }
+    }).public({
+        name: 'The seed eater',
+        getName: function() { return this.name; }
+    }).build();
+
+    const d = new Derived();
+    expect(d.name).toEqual('Tom');
+    expect(d.species).toEqual('spider');
+
+    expect(wasBaseCalled).toEqual(true);
+    expect(wasDerivedCalled).toEqual(true);
+});
+
+// Check the order of variable assignment in constructors
 // Parent and derived both have user-defined constructors and yet Derived doesn't call it
 // Parent - autocreated constructor, Derived - manually created and base is called and is not called
 // Variable or method declared more than once
@@ -314,3 +407,4 @@ test('Cannot access private data in base class', () => {
 // public, private, etc doesn't get data passped properly
 
 // TODO: support getters and setters?
+// support constants?
